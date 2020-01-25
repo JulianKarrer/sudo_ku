@@ -1,4 +1,5 @@
 import random
+import itertools
 
 #initialize 9x9 sudoku as an integer matrix to an empty state
 emptyGrid = [[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0]]
@@ -6,6 +7,7 @@ emptyGrid = [[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,
 #a test sudoku to be solved when debugging
 testSudoku = [[0,3,0,9,4,5,0,0,0],[0,4,0,3,0,0,7,0,5],[0,6,0,0,0,0,0,0,0],[0,0,3,6,0,0,0,8,0],[0,0,7,8,0,0,3,9,0],[4,0,8,7,9,0,2,1,0],[5,0,4,0,0,2,0,0,0],[0,0,0,0,0,6,9,4,0],[2,0,0,0,3,0,0,0,8]]
 doneTestSudoku = [[7,3,2,9,4,5,8,6,1],[1,4,9,3,6,8,7,2,5],[8,6,5,2,1,7,4,3,9],[9,1,3,6,2,4,5,8,7],[6,2,7,8,5,1,3,9,4],[4,5,8,7,9,3,2,1,6],[5,9,4,1,8,2,6,7,3],[3,8,1,5,7,6,9,4,2],[2,7,6,4,3,9,1,5,8]]
+manySolutionTestSudoku = [[0,8,0,0,0,9,7,4,3],[0,5,0,0,0,8,0,1,0],[0,1,0,0,0,0,0,0,0],[8,0,0,0,0,5,0,0,0],[0,0,0,8,0,4,0,0,0],[0,0,0,3,0,0,0,0,6],[0,0,0,0,0,0,0,7,0],[0,3,0,5,0,0,0,8,0],[9,7,2,4,0,0,0,5,0]]
 
 
 #list of accepted symbols (later shuffled)
@@ -102,45 +104,88 @@ def solveSudoku(grid):
 	if not checkForZeros(grid):
 		return grid
 	#check each empty field in order for numbers that may be inserted. 
-	for row in range(9):
-		for col  in range(9):
-			if grid[row][col]==0:
-				possibleNumbers=[]
-				for x in range(1,10):
-					if checkBeforeInsert(grid, row, col, x):
-						possibleNumbers.append(x)
-				#there are two cases: 
-				#A) there are no possible numbers to be inserted into this field. this means the way the sudoku has been filled out
-				#so far is incorrect. this terminates a recursive branch by returning an empty grid
-				if len(possibleNumbers)==0:
-					return emptyGrid
-				#B) there are one ore more numbers which may be inserted into this field. recursively try to solve each variant of the 
-				#sudoku that results from those possible numbers being inserted
-				if len(possibleNumbers)>0:
-					for x in possibleNumbers:
-						grid[row][col]=x
-						#deepcopy to avoid search tree branches affecting each other (byref bugs)
-						g = solveSudoku(deepcopyGrid(grid))
-						#if the returned grid is a solution (contains no zeros), return the grid, unraveling the layers of recusion until the search tree root is hit
-						#if not, continue in the for loop of possibleNumbers to traverse the search tree sideways
-						if not checkForZeros(g):
-							return g
+	for row, col in itertools.product(range(9), range(9)):
+		if grid[row][col]==0:
+			possibleNumbers=[]
+			for x in range(1,10):
+				if checkBeforeInsert(grid, row, col, x):
+					possibleNumbers.append(x)
+			#there are two cases: 
+			#A) there are no possible numbers to be inserted into this field. this means the way the sudoku has been filled out
+			#so far is incorrect. this terminates a recursive branch by returning an empty grid
+			if len(possibleNumbers)==0:
+				return emptyGrid
+			#B) there are one ore more numbers which may be inserted into this field. recursively try to solve each variant of the 
+			#sudoku that results from those possible numbers being inserted
+			if len(possibleNumbers)>0:
+				for x in possibleNumbers:
+					grid[row][col]=x
+					#deepcopy to avoid search tree branches affecting each other (byref bugs)
+					g = solveSudoku(deepcopyGrid(grid))
+					#if the returned grid is a solution (contains no zeros), return the grid, unraveling the layers of recusion until the search tree root is hit
+					#if not, continue in the for loop of possibleNumbers to traverse the search tree sideways
+					if not checkForZeros(g):
+						return g
+
+
+
+#function to count the number of solutions of a sudoku puzzle.
+#passing this function en empty grid or a sudoku with insuffiecient clues will cause runtime issues
+def countSolutions(grid):
+	#to keep track of the counter throughout multiple layers of recursion it is defined globally
+	#it must be initialized (counter = 0) before countSolutions is called
+	global counter
+	#the following code to attempt every possible solution is copied from the solveSudoku function (see comments above) but modified
+	for row, col in itertools.product(range(9), range(9)):
+		if grid[row][col]==0:
+			for x in range(1,10):
+				if checkBeforeInsert(grid, row, col, x):
+					#the first modification: we don't keep track of possibleNumbers to be inserted 
+					grid[row][col]=x
+					if not checkForZeros(grid):
+						#this differentiates the countSolutions function from the sudokuSolver
+						#if a solution is found, instead of returning the solved field, we just increment the solution-counter and break
+						counter+=1
+						break
+					else:
+						#otherwise, we continue the depth-frist search down the rabbit hole of recursion.
+						if countSolutions(deepcopyGrid(grid)):
+							return True
+			break
+
+
+
+#to test the uniquity of a puzzle, it must only exhaustively be tested if there is more than one solution.
+#therefore, as soon as two solutions are found the search can be stopped, avoiding long waits on puzzles with many solutions
+#or runtime issues on empty grids.
+#this is important when attempting to generate sudokus, as a speedy exectuion of this function is almost assured
+def testUniquity(grid):
+	global counter
+	for row, col in itertools.product(range(9), range(9)):
+		#the only difference to the countSolutions function above is this check: if we have found a second solution, return
+		#for explanation, see the countSolutions function
+		if counter>1:
+			return True
+		if grid[row][col]==0:
+			for x in range(1,10):
+				if checkBeforeInsert(grid, row, col, x):
+					grid[row][col]=x
+					if not checkForZeros(grid):
+						counter+=1
+						break
+					else:
+						if testUniquity(deepcopyGrid(grid)):
+							return True
+			break
 
 
 
 
 
+#CALL FUNCTIONS HERE
 
-#CALL FUNCTIONS
-
-#test fillSudoku function
-#x = fillSudoku(deepcopyGrid(emptyGrid))
-#printGrid(x)
-#print()
-
-#test solveSudoku function
-printGrid(testSudoku)
-print()
-printGrid(solveSudoku(testSudoku))
-
+counter=0      
+x=testUniquity(manySolutionTestSudoku) 
+print("{}".format(counter))
+print("{}".format(x))
 
