@@ -1,14 +1,38 @@
 import random
 import itertools
 
+
+#GLOBAL VARIABLES
 #initialize 9x9 sudoku as an integer matrix to an empty state
-emptyGrid = [[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0]]
+emptyGrid = [
+[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],
+[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],
+[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0]]
 
 #a test sudoku to be solved when debugging
-testSudoku = [[0,3,0,9,4,5,0,0,0],[0,4,0,3,0,0,7,0,5],[0,6,0,0,0,0,0,0,0],[0,0,3,6,0,0,0,8,0],[0,0,7,8,0,0,3,9,0],[4,0,8,7,9,0,2,1,0],[5,0,4,0,0,2,0,0,0],[0,0,0,0,0,6,9,4,0],[2,0,0,0,3,0,0,0,8]]
-doneTestSudoku = [[7,3,2,9,4,5,8,6,1],[1,4,9,3,6,8,7,2,5],[8,6,5,2,1,7,4,3,9],[9,1,3,6,2,4,5,8,7],[6,2,7,8,5,1,3,9,4],[4,5,8,7,9,3,2,1,6],[5,9,4,1,8,2,6,7,3],[3,8,1,5,7,6,9,4,2],[2,7,6,4,3,9,1,5,8]]
-manySolutionTestSudoku = [[0,8,0,0,0,9,7,4,3],[0,5,0,0,0,8,0,1,0],[0,1,0,0,0,0,0,0,0],[8,0,0,0,0,5,0,0,0],[0,0,0,8,0,4,0,0,0],[0,0,0,3,0,0,0,0,6],[0,0,0,0,0,0,0,7,0],[0,3,0,5,0,0,0,8,0],[9,7,2,4,0,0,0,5,0]]
+testSudoku = [
+[0,3,0,9,4,5,0,0,0],[0,4,0,3,0,0,7,0,5],[0,6,0,0,0,0,0,0,0],
+[0,0,3,6,0,0,0,8,0],[0,0,7,8,0,0,3,9,0],[4,0,8,7,9,0,2,1,0],
+[5,0,4,0,0,2,0,0,0],[0,0,0,0,0,6,9,4,0],[2,0,0,0,3,0,0,0,8]]
+doneTestSudoku = [
+[7,3,2,9,4,5,8,6,1],[1,4,9,3,6,8,7,2,5],[8,6,5,2,1,7,4,3,9],
+[9,1,3,6,2,4,5,8,7],[6,2,7,8,5,1,3,9,4],[4,5,8,7,9,3,2,1,6],
+[5,9,4,1,8,2,6,7,3],[3,8,1,5,7,6,9,4,2],[2,7,6,4,3,9,1,5,8]]
+manySolutionTestSudoku = [
+[0,8,0,0,0,9,7,4,3],[0,5,0,0,0,8,0,1,0],[0,1,0,0,0,0,0,0,0],
+[8,0,0,0,0,5,0,0,0],[0,0,0,8,0,4,0,0,0],[0,0,0,3,0,0,0,0,6],
+[0,0,0,0,0,0,0,7,0],[0,3,0,5,0,0,0,8,0],[9,7,2,4,0,0,0,5,0]]
 
+#declare counter for number of solutions on global scale (countSolutions, testUniquity, solveSudoku)
+uniqueCounter=0
+counter=0
+solutionFound=False
+
+#declare empty grid to hold the solution of solveSudoku on global scale
+solution=[
+[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],
+[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],
+[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0]]
 
 #list of accepted symbols (later shuffled)
 symbols = [1,2,3,4,5,6,7,8,9]
@@ -16,7 +40,9 @@ symbols = [1,2,3,4,5,6,7,8,9]
 sectionIndexes = [[0,1,2],[-1,0,1],[-2,-1,0]]
 
 
-#HELPER FUNCTIONS
+
+
+#UTILITY FUNCTIONS
 #print the grid, used for debugging
 def printGrid(grid):
 	for row in grid:
@@ -24,12 +50,14 @@ def printGrid(grid):
 
 #return a deepcopy of the grid that was passed in
 def deepcopyGrid(grid):
-	copy=[[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0]]
+	copy=[
+	[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],
+	[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],
+	[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0]]
 	for y in range(9):
 		for x in range(9):
 			copy[y][x]=grid[y][x]
 	return copy
-
 
 #return the column of the grid at a given index (0-8) as a list
 def getColumn(grid, index):
@@ -64,23 +92,28 @@ def checkForZeros(grid):
 				return True
 	return False
 
+#return the number of zeros in a grid
+def numberOfZeros(grid):
+	num=0
+	for row, col in itertools.product(range(9), range(9)):
+		if grid[row][col]==0:
+			num+=1
+	return num
+
 
 
 
 #MAIN FUNCTIONS
-
 #fill the empty grid with one random possible solved sudoku.
 def fillSudoku(grid):
-	#the algorithm within the while loop has a chance to fail, leaving zeros on the grid. 
+	grid = deepcopyGrid(grid)
+	#the algorithm within the while loop has a chance to fail, leaving zeros on the grid.
 	#therefore the grid is reset and the algorithm repeated until a solution is found
-	i=0
 	while checkForZeros(grid):
-		i+=1
 		#reset grid
 		for y in range(9):
 			for x in range(9):
 				grid[y][x]=0
-
 		#iterate through every field left on the grid
 		for row in range(9):
 			for col in range(9):
@@ -90,32 +123,76 @@ def fillSudoku(grid):
 					if checkBeforeInsert(grid,row,col,number):
 						grid[row][col]=number
 						break;
-	#DEBUG
-	print("found sudoku in {} tries".format(i))
 	return grid
-
-
 
 #attempt every legal step to solve a sudoku until a valid solution is found
 #this acts like a recursive "search tree" of possible ways to attempt this sudoku
 #this function terminates as soon as the first solution is hit and therefore does not check for the uniquity of the solution
 def solveSudoku(grid):
+	#the placeholder grid for the solution and the boolean indicating whether a solution has been found are defined globally
+	#so that they can be accessed equally throughout all layers of recursion
+	global solutionFound
+	global solution
+	#this subfunction performs the actual recursive depth-first search for a solution
+	def inner_solveSudoku(grid):
+		global solutionFound
+		global solution
+		#iterate over every field on the grid
+		for row, col in itertools.product(range(9), range(9)):
+			#in each iteration, first check if a solution has already been found, if so, abort and return
+			if solutionFound:
+				return True
+			#when an empty field has been found, try inserting every possible number without breaking sudoku rules
+			if grid[row][col]==0:
+				for x in range(1,10):
+					if checkBeforeInsert(grid, row, col, x):
+						#when a number has been found, insert it for now
+						grid[row][col]=x
+						#then check if this insertion results in a solution
+						if not checkForZeros(grid):
+							#if so, set the solutionFound flag to abort the search process and store the solution
+							solution = deepcopyGrid(grid)
+							solutionFound = True
+							break
+						else:
+						#otherwise, for each possible value to be inserted try solving the resulting grid recursively
+						#progressing down the search tree
+							if inner_solveSudoku(deepcopyGrid(grid)):
+								return True
+				break
+
+	#the outer function handles return values and resets the global variables
+	inner_solveSudoku(grid)
+	solutionFound=False
+	x=solution
+	solution = emptyGrid
+	return x
+
+
+
+#THIS FUNCTION SEEMS NOT TO BE WORKING PROPERLY (but remains in the codebase until i figure out why).
+
+# A working version is provided above (solveSudoku)
+#attempt every legal step to solve a sudoku until a valid solution is found
+#this acts like a recursive "search tree" of possible ways to attempt this sudoku
+#this function terminates as soon as the first solution is hit and therefore does not check for the uniquity of the solution
+def XsolveSudoku(grid):
 	#first, check if sudoku is already solved, if so, return the solved sudoku
 	if not checkForZeros(grid):
 		return grid
-	#check each empty field in order for numbers that may be inserted. 
+	#check each empty field in order for numbers that may be inserted.
 	for row, col in itertools.product(range(9), range(9)):
 		if grid[row][col]==0:
 			possibleNumbers=[]
 			for x in range(1,10):
 				if checkBeforeInsert(grid, row, col, x):
 					possibleNumbers.append(x)
-			#there are two cases: 
+			#there are two cases:
 			#A) there are no possible numbers to be inserted into this field. this means the way the sudoku has been filled out
 			#so far is incorrect. this terminates a recursive branch by returning an empty grid
 			if len(possibleNumbers)==0:
 				return emptyGrid
-			#B) there are one ore more numbers which may be inserted into this field. recursively try to solve each variant of the 
+			#B) there are one ore more numbers which may be inserted into this field. recursively try to solve each variant of the
 			#sudoku that results from those possible numbers being inserted
 			if len(possibleNumbers)>0:
 				for x in possibleNumbers:
@@ -129,29 +206,36 @@ def solveSudoku(grid):
 
 
 
-#function to count the number of solutions of a sudoku puzzle.
-#passing this function en empty grid or a sudoku with insuffiecient clues will cause runtime issues
+#return the number of solutions of a sudoku puzzle.
+#passing this function an empty grid or a sudoku with insuffiecient clues will cause runtime issues
 def countSolutions(grid):
 	#to keep track of the counter throughout multiple layers of recursion it is defined globally
-	#it must be initialized (counter = 0) before countSolutions is called
 	global counter
-	#the following code to attempt every possible solution is copied from the solveSudoku function (see comments above) but modified
-	for row, col in itertools.product(range(9), range(9)):
-		if grid[row][col]==0:
-			for x in range(1,10):
-				if checkBeforeInsert(grid, row, col, x):
-					#the first modification: we don't keep track of possibleNumbers to be inserted 
-					grid[row][col]=x
-					if not checkForZeros(grid):
-						#this differentiates the countSolutions function from the sudokuSolver
-						#if a solution is found, instead of returning the solved field, we just increment the solution-counter and break
-						counter+=1
-						break
-					else:
-						#otherwise, we continue the depth-frist search down the rabbit hole of recursion.
-						if countSolutions(deepcopyGrid(grid)):
-							return True
-			break
+	def inner_countSolutions(grid):
+		global counter
+		#the following code to attempt every possible solution is copied from the solveSudoku function (see comments above) but modified
+		#loop through all fields, find the next empty one
+		for row, col in itertools.product(range(9), range(9)):
+			if grid[row][col]==0:
+				#attempt to fill it with every possible value
+				for x in range(1,10):
+					if checkBeforeInsert(grid, row, col, x):
+						#if the insertion does not break any rules, insert the number for now and check if this solves the puzzle
+						grid[row][col]=x
+						if not checkForZeros(grid):
+							#if a solution is found, instead of returning the solved field, we just increment the solution-counter and break
+							counter+=1
+							break
+						else:
+							#otherwise, we continue the depth-frist search down the rabbit hole of recursion.
+							if inner_countSolutions(deepcopyGrid(grid)):
+								return True
+				break
+
+	inner_countSolutions(grid)
+	x=counter
+	counter=0
+	return x
 
 
 
@@ -159,33 +243,80 @@ def countSolutions(grid):
 #therefore, as soon as two solutions are found the search can be stopped, avoiding long waits on puzzles with many solutions
 #or runtime issues on empty grids.
 #this is important when attempting to generate sudokus, as a speedy exectuion of this function is almost assured
+#return value: true=unique, false=more than one solution
 def testUniquity(grid):
-	global counter
-	for row, col in itertools.product(range(9), range(9)):
-		#the only difference to the countSolutions function above is this check: if we have found a second solution, return
-		#for explanation, see the countSolutions function
-		if counter>1:
-			return True
-		if grid[row][col]==0:
-			for x in range(1,10):
-				if checkBeforeInsert(grid, row, col, x):
-					grid[row][col]=x
-					if not checkForZeros(grid):
-						counter+=1
-						break
-					else:
-						if testUniquity(deepcopyGrid(grid)):
-							return True
-			break
+	#the inner function performs the actual check, the outer function sets prerequisite variables and controls the return value
+	def inner_testUniquity(grid):
+		global uniqueCounter
+		for row, col in itertools.product(range(9), range(9)):
+			#the only difference to the countSolutions function above is this check: if we have found a second solution, return
+			#for explanation, see the countSolutions function
+			if uniqueCounter>1:
+				return True
+			if grid[row][col]==0:
+				for x in range(1,10):
+					if checkBeforeInsert(grid, row, col, x):
+						grid[row][col]=x
+						if not checkForZeros(grid):
+							uniqueCounter+=1
+							break
+						else:
+							if inner_testUniquity(deepcopyGrid(grid)):
+								return True
+				break
 
+	inner_testUniquity(deepcopyGrid(grid))
+	global uniqueCounter
+	if uniqueCounter==1:
+		uniqueCounter=0
+		return True
+	else:
+		uniqueCounter=0
+		return False
+
+
+
+#this function is not guaranteed to return a sudoku with the specified amount of clues if doing so
+#would result in a non-unique puzzle.
+def generateSudoku(clues):
+	#first, generate a full sudoku grid
+	grid = fillSudoku(emptyGrid)
+	#from the filled out grid we want to erase numbers at random positions, unless it results in a non-unique or unsolvable puzzle
+	#this is done by shuffling all possible positions to erase numbers and try them, until the desired number of clues
+	#is left or there are no more fields that can be erased.
+	#all possible "coordinates" in a sudoku (cartesian product of range(9))
+	coords = [[0, 0], [0, 1], [0, 2], [0, 3], [0, 4], [0, 5], [0, 6], [0, 7], [0, 8], [1, 0], [1, 1],[1, 2], [1, 3], [1, 4],
+	 [1, 5], [1, 6], [1, 7], [1, 8], [2, 0], [2, 1], [2, 2], [2, 3], [2, 4], [2, 5],[2, 6], [2, 7], [2, 8], [3, 0], [3, 1], 
+	 [3, 2], [3, 3], [3, 4], [3, 5], [3, 6], [3, 7], [3, 8], [4, 0],[4, 1], [4, 2], [4, 3], [4, 4], [4, 5], [4, 6], [4, 7], 
+	 [4, 8], [5, 0], [5, 1], [5, 2], [5, 3], [5, 4],[5, 5], [5, 6], [5, 7], [5, 8], [6, 0], [6, 1], [6, 2], [6, 3], [6, 4], 
+	 [6, 5], [6, 6], [6, 7], [6, 8],[7, 0], [7, 1], [7, 2], [7, 3], [7, 4], [7, 5], [7, 6], [7, 7], [7, 8], [8, 0], [8, 1], 
+	 [8, 2], [8, 3],[8, 4], [8, 5], [8, 6], [8, 7], [8, 8]]
+	random.shuffle(coords)
+	#while there are more clues than specified AND not all positions have already been tried,
+	#try to remove a clue at the next position in coords
+	while len(coords)>0 and (81- numberOfZeros(grid))>clues:
+		#save the field value in case removing it would destroy the puzzle and it needs to be put back
+		x = grid[coords[0][0]][coords[0][1]]
+		#remove the value
+		grid[coords[0][0]][coords[0][1]]=0
+		#if the grid now fails the uniquity test, put the value back
+		if not testUniquity(grid):
+			grid[coords[0][0]][coords[0][1]]=x
+		#regardless of if the value was removed successfully or unsuccessfully, remove the current coordinate from coords
+		coords.pop(0)
+	return grid
 
 
 
 
 #CALL FUNCTIONS HERE
-
-counter=0      
-x=testUniquity(manySolutionTestSudoku) 
-print("{}".format(counter))
-print("{}".format(x))
-
+printGrid(fillSudoku(emptyGrid))
+print()
+printGrid(solveSudoku(testSudoku))
+print()
+print(countSolutions(manySolutionTestSudoku))
+print()
+print(testUniquity(testSudoku))
+print(testUniquity(manySolutionTestSudoku))
+print()
+printGrid(generateSudoku(30))

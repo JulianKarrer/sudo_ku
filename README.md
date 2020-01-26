@@ -1,11 +1,12 @@
 # SUDO_KU
 
 A python implementation of algorithms used to solve and generate sudoku puzzles.
-
+UNIX pun is intended.
 
 ## Current Features
 
 * Solve any sudoku
+* Generate sudokus
 * Count the number of solutions of a sudoku
 * Check if a sudoku has a unique solution
 
