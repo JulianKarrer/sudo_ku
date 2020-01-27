@@ -1,6 +1,7 @@
 import random
 import itertools
 import re
+import math
 
 
 #GLOBAL VARIABLES
@@ -166,7 +167,7 @@ def solveSudoku(grid):
 				break
 
 	#the outer function handles return values and resets the global variables
-	inner_solveSudoku(grid)
+	inner_solveSudoku(deepcopyGrid(grid))
 	solutionFound=False
 	x=solution
 	solution = emptyGrid
@@ -236,7 +237,7 @@ def countSolutions(grid):
 								return True
 				break
 
-	inner_countSolutions(grid)
+	inner_countSolutions(deepcopyGrid(grid))
 	x=counter
 	counter=0
 	return x
@@ -314,7 +315,7 @@ def generateSudoku(clues):
 
 
 #IO FUNCTIONS
-#write a list of strings into the file. 
+#write a list of strings into the file sudokumemory.txt
 #the return value indicates the success of the operation (false = error, true = written)
 def writeToFile(listOfStrings):
 	#open the file in a try statement to contain possible io errors
@@ -384,6 +385,30 @@ def sanitizeInput(rawString):
 
 
 
+#serialize a sudoku and its solution into a string
+#this function works row-wise from top to bottom, left to right
+def sudokuToString(grid,solutionGrid):
+	returnString=""
+	#first, add each digit of the sudoku grid to the string
+	for y, x in itertools.product(range(9), range(9)):
+		returnString += str(grid[y][x])
+	#then, add each digit of its solution to the string
+	for y, x in itertools.product(range(9), range(9)):
+		returnString += str(solutionGrid[y][x])
+	return returnString
+
+#de-serialize a string into a sudoku grid (THIS DISCARDS THE SOLUTION aka the last 81 digits of the 162 character code)
+#this requires the first 81 characters to be a valid sudoku
+def stringToGrid(string):
+	returnGrid = deepcopyGrid(emptyGrid)
+	string = string[:81]
+	for index in range(81):
+		col = index%9 				#the column is the index modulo 9
+		row = math.floor(index/9) 	#the row is the integer number of times 9 fits into the index
+
+		returnGrid[row][col]=int(string[index])
+	return returnGrid
+
 
 #CALL FUNCTIONS HERE
 #printGrid(fillSudoku(emptyGrid))
@@ -397,7 +422,13 @@ def sanitizeInput(rawString):
 #print()
 #printGrid(generateSudoku(30))
 
-writeToFile(["12","34","abcdefghijklmnop5678"])
-x=readFromFile(0,0)
-for i in x:
-	print(i)
+#writeToFile(["12","34","abcdefghijklmnop5678"])
+#x=readFromFile(0,0)
+#for i in x:
+#	print(i)
+
+#printGrid(testSudoku)
+#s=sudokuToString(testSudoku,solveSudoku(testSudoku))
+#print(s)
+#printGrid(stringToGrid(s))
+
