@@ -1,5 +1,6 @@
 import random
 import itertools
+import re
 
 
 #GLOBAL VARIABLES
@@ -22,6 +23,9 @@ manySolutionTestSudoku = [
 [0,8,0,0,0,9,7,4,3],[0,5,0,0,0,8,0,1,0],[0,1,0,0,0,0,0,0,0],
 [8,0,0,0,0,5,0,0,0],[0,0,0,8,0,4,0,0,0],[0,0,0,3,0,0,0,0,6],
 [0,0,0,0,0,0,0,7,0],[0,3,0,5,0,0,0,8,0],[9,7,2,4,0,0,0,5,0]]
+
+#a list of grids used in file IO operations. txt-entries are read into it, and written from it
+memory=[]
 
 #declare counter for number of solutions on global scale (countSolutions, testUniquity, solveSudoku)
 uniqueCounter=0
@@ -309,14 +313,91 @@ def generateSudoku(clues):
 
 
 
+#IO FUNCTIONS
+#write a list of strings into the file. 
+#the return value indicates the success of the operation (false = error, true = written)
+def writeToFile(listOfStrings):
+	#open the file in a try statement to contain possible io errors
+	try:
+		file = open("sudokumemory.txt",'a')
+		#write each string in the list as a seperate line
+		for string in listOfStrings:
+			file.write(string+"\n")
+	except Exception as e:
+		return False
+	else:
+		return True
+	finally:
+		#flush the memory, close the file
+		file.close()
+
+
+
+#read the sudokumemory.txt file to import data
+#returns a list of strings, each having been sanitized according to the sanitizeIpnut function below
+#parameters: 	startline = index of the first line to be read starting with 0
+#				numberOfLines = number of lines to be read (specify 0 to read all lines)
+def readFromFile(startLine,numberOfLines):
+	#list of strings to be returned
+	returnList=[]
+	#open the file in a try statement to contain possible io errors
+	try:
+		lineCounter = 0
+		linesRead = 0
+		file = open("sudokumemory.txt",'r')
+		#iterate through every line in the file
+		for line in file:
+			#only read the file when the index of the current line is greater than or equal to the value specified in the parameters
+			if lineCounter >= startLine:
+				#also, only read it when numberOfLines=0 or the number of lines to be read has not been reached yet
+				if numberOfLines==0 or numberOfLines<linesRead:
+					#sanitize the input before adding it to the list of lines to be read according to the
+					#rules in the sanitizeInput function. discard empty lines.
+					x = sanitizeInput(line)
+					if len(x)>0:
+						returnList.append(x) 
+
+			#increment counters to keep track of line index and number of lines read
+					linesRead +=1
+			lineCounter +=1
+	except Exception as e:
+		#if there was an error, return an empty list
+		raise
+		return []
+	else:
+		return returnList
+	finally:
+		#flush the memory, close the file
+		file.close()
+
+
+
+#use this function to sanitize the input from the sudokumemory.txt file - NEVER TRUST RAW USER INPUT
+#only numbers and a maximum of 162 characters are allowed
+def sanitizeInput(rawString):
+	#remove anything but numbers
+	x = re.sub('\D','',rawString)
+	#truncate strings of more than 162 characters
+	returnString = x[:162]
+	#return the sanitized string
+	return returnString
+
+
+
+
 #CALL FUNCTIONS HERE
-printGrid(fillSudoku(emptyGrid))
-print()
-printGrid(solveSudoku(testSudoku))
-print()
-print(countSolutions(manySolutionTestSudoku))
-print()
-print(testUniquity(testSudoku))
-print(testUniquity(manySolutionTestSudoku))
-print()
-printGrid(generateSudoku(30))
+#printGrid(fillSudoku(emptyGrid))
+#print()
+#printGrid(solveSudoku(testSudoku))
+#print()
+#print(countSolutions(manySolutionTestSudoku))
+#print()
+#print(testUniquity(testSudoku))
+#print(testUniquity(manySolutionTestSudoku))
+#print()
+#printGrid(generateSudoku(30))
+
+writeToFile(["12","34","abcdefghijklmnop5678"])
+x=readFromFile(0,0)
+for i in x:
+	print(i)
