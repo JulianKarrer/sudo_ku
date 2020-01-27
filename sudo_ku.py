@@ -2,6 +2,7 @@ import random
 import itertools
 import re
 import math
+from operator import sub
 
 
 #GLOBAL VARIABLES
@@ -24,6 +25,10 @@ manySolutionTestSudoku = [
 [0,8,0,0,0,9,7,4,3],[0,5,0,0,0,8,0,1,0],[0,1,0,0,0,0,0,0,0],
 [8,0,0,0,0,5,0,0,0],[0,0,0,8,0,4,0,0,0],[0,0,0,3,0,0,0,0,6],
 [0,0,0,0,0,0,0,7,0],[0,3,0,5,0,0,0,8,0],[9,7,2,4,0,0,0,5,0]]
+matrixTestGrid = [
+[1,2,3,4,5,6,7,8,9],[1,2,3,4,5,6,7,8,9],[1,2,3,4,5,6,7,8,9],
+[1,2,3,4,5,6,7,8,9],[1,2,3,4,5,6,7,8,9],[1,2,3,4,5,6,7,8,9],
+[1,2,3,4,5,6,7,8,9],[1,2,3,4,5,6,7,8,9],[1,2,3,4,5,6,7,8,9],]
 
 #a list of grids used in file IO operations. txt-entries are read into it, and written from it
 memory=[]
@@ -314,6 +319,80 @@ def generateSudoku(clues):
 
 
 
+#TRANSFORMTAION FUNCTIONS
+#these functions perform matrix transformations on the sudoku grid, creating new grids without changing
+#the number of clues, solvability or number of solutions of the puzzle. 
+#especially in the case of difficult puzzles with few clues, generating related sudokus might be enormously faster than creating 
+#individual sudokus from scratch using generateSudoku()
+
+#as each of these functions can be applied in serial, a LOT of similar sudokus can be generated (4 * 9! * ...)
+
+#for details on the mathematics, see https://en.wikipedia.org/wiki/Mathematics_of_Sudoku#Enumerating_essentially_different_Sudoku_solutions
+
+#rotate the matrix by 90° clockwise
+def matrixRotate(grid):
+	a = deepcopyGrid(emptyGrid)	#initialize an empty matrix a
+	for i in range(9):
+		for j in range(9):
+			#the inverted i and j mean a row becomes a column. the 8 - means the first row becomes the last column.
+			#this equates to a 90° clockwise rotation
+			a[j][8-i]=grid[i][j]	
+	return a 
+
+#wrapper function: by applying matrixRotate() twice, a matrix can be "flipped". 
+#this way, no seperate algorithms for vertical and horizontal reflection need to be implemented.
+def matrixFlip(grid):
+	a=matrixRotate(matrixRotate(deepcopyGrid(grid)))
+	return a
+
+#combine the two functions above into a function that returns a full list of 0°, 90°, 180° and 270° rotated grids
+def allMatrixRotations(grid):
+	#add the grid itself to the list of rotations (0°)
+	returnList=[grid]	
+	for i in range(3):	
+		#take the last entry of the list, rotate it again and append it to the list. 
+		#this way each entry in the list is rotated once in comparison to its predecessor
+		returnList.append(matrixRotate(returnList[-1]))
+	return returnList
+
+
+
+#return a list of all possible permutations of the symbols used in a sudoku
+#for example, a sudoku is mathematically similar, even if all 3s and 8s are swapped etc.
+
+#you can set the maximum number of unchanged numbers compared to the original puzzle to avoid very similar solutions
+#the solutions may still, however, be very similar to each other
+#	WARNING even maxUnchangedNumbers=0 results in ~20MB worth of sudokus
+def allMatrixSymbolPermutations(grid,maxUnchangedNumbers=9):
+	returnList=[]
+	#find all possible permutations of the numbers 1 to 9 using itertools.
+	allPermutations=itertools.permutations(symbols)
+	#each entry in that list (9!=362 880 elements) acts like a lookup table:
+	#	each number in the grid represents the index of the number to be translated to in that lookup table.
+	for table in allPermutations:
+		#check the number of values that have been swapped in this permutation. 
+		#if more numbers than allowed by maxUnchangedNumbers remain the same in the new puzzle, skip this permutation
+		x=tuple(map(sub,table,(1,2,3,4,5,6,7,8,9)))	
+		#when the current tuple is subtracted by (1,2,3,4,5,6,7,8,9), unchanged numbers become 0
+		#we can then count the number of zeros and compare it to maxUnchangedNumbers
+		if x.count(0)>maxUnchangedNumbers:
+			continue
+
+		changedGrid=deepcopyGrid(emptyGrid)
+		#loop through each field of the grid, skipping zeros
+		for row, col in itertools.product(range(9), range(9)):
+			if grid[row][col]!=0:
+				#for each number, look up its corresponing new number and insert it into changedGrid in the same position
+				changedGrid[row][col]=table[grid[row][col]-1]
+		#once the entire grid has been translated, append it to the list of solutions
+		returnList.append(changedGrid)
+	#once all permutations have been considered, return the list
+	return returnList
+
+
+
+
+
 #IO FUNCTIONS
 #write a list of strings into the file sudokumemory.txt
 #the return value indicates the success of the operation (false = error, true = written)
@@ -387,7 +466,10 @@ def sanitizeInput(rawString):
 
 #serialize a sudoku and its solution into a string
 #this function works row-wise from top to bottom, left to right
-def sudokuToString(grid,solutionGrid):
+def sudokuToString(grid,solutionGrid=[
+[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],
+[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],
+[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0]]):
 	returnString=""
 	#first, add each digit of the sudoku grid to the string
 	for y, x in itertools.product(range(9), range(9)):
@@ -396,6 +478,8 @@ def sudokuToString(grid,solutionGrid):
 	for y, x in itertools.product(range(9), range(9)):
 		returnString += str(solutionGrid[y][x])
 	return returnString
+
+
 
 #de-serialize a string into a sudoku grid (THIS DISCARDS THE SOLUTION aka the last 81 digits of the 162 character code)
 #this requires the first 81 characters to be a valid sudoku
@@ -408,6 +492,8 @@ def stringToGrid(string):
 
 		returnGrid[row][col]=int(string[index])
 	return returnGrid
+
+
 
 
 #CALL FUNCTIONS HERE
@@ -431,4 +517,16 @@ def stringToGrid(string):
 #s=sudokuToString(testSudoku,solveSudoku(testSudoku))
 #print(s)
 #printGrid(stringToGrid(s))
+
+#for x in allMatrixRotations(matrixTestGrid):
+#	printGrid(x)
+#	print()
+
+#x=allMatrixSymbolPermutations(testSudoku,0)
+#print("done")
+#strlist=[]
+#for entry in x:
+#	strlist.append(sudokuToString(entry))
+#writeToFile(strlist)
+
 

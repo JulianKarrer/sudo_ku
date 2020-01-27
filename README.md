@@ -9,6 +9,8 @@ UNIX pun is intended.
 * Generate sudokus
 * Count the number of solutions of a sudoku
 * Check if a sudoku has a unique solution
+* Permutate and transform sudokus to quickly find (a lot of) similar ones
+* Store, access and retrive sudokus from a .txt file
 
 ## Usage
 
