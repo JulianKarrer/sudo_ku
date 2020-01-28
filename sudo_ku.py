@@ -5,7 +5,8 @@ import math
 from operator import sub
 
 
-#GLOBAL VARIABLES
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~	GLOBAL VARIABLES 	~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 #initialize 9x9 sudoku as an integer matrix to an empty state
 emptyGrid = [
 [0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],
@@ -26,11 +27,11 @@ manySolutionTestSudoku = [
 [8,0,0,0,0,5,0,0,0],[0,0,0,8,0,4,0,0,0],[0,0,0,3,0,0,0,0,6],
 [0,0,0,0,0,0,0,7,0],[0,3,0,5,0,0,0,8,0],[9,7,2,4,0,0,0,5,0]]
 matrixTestGrid = [
-[1,2,3,4,5,6,7,8,9],[1,2,3,4,5,6,7,8,9],[1,2,3,4,5,6,7,8,9],
-[1,2,3,4,5,6,7,8,9],[1,2,3,4,5,6,7,8,9],[1,2,3,4,5,6,7,8,9],
-[1,2,3,4,5,6,7,8,9],[1,2,3,4,5,6,7,8,9],[1,2,3,4,5,6,7,8,9],]
+[1,2,3,4,5,6,7,8,9],[2,8,7,6,5,4,3,2,1],[3,2,3,4,5,6,7,8,9],
+[4,8,7,6,5,4,3,2,1],[5,2,3,4,5,6,7,8,9],[6,8,7,6,5,4,3,2,1],
+[7,2,3,4,5,6,7,8,9],[8,8,7,6,5,4,3,2,1],[9,2,3,4,5,6,7,8,9],]
 
-#a list of grids used in file IO operations. txt-entries are read into it, and written from it
+#a list of grids used in file IO operations. txt-entries may be read into it, and written from it
 memory=[]
 
 #declare counter for number of solutions on global scale (countSolutions, testUniquity, solveSudoku)
@@ -52,7 +53,8 @@ sectionIndexes = [[0,1,2],[-1,0,1],[-2,-1,0]]
 
 
 
-#UTILITY FUNCTIONS
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~	UTILITY FUNCTIONS 	~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 #print the grid, used for debugging
 def printGrid(grid):
 	for row in grid:
@@ -110,10 +112,18 @@ def numberOfZeros(grid):
 			num+=1
 	return num
 
+#swap two rows in a grid (used in matrix transformations)
+#use indices 0-8
+def swapRows(grid,row1,row2):
+	bufferRow = grid[row1]
+	grid[row1]=grid[row2]
+	grid[row2]=bufferRow
+	return True
 
 
 
-#MAIN FUNCTIONS
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~	MAIN FUNCTIONS 	~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 #fill the empty grid with one random possible solved sudoku.
 def fillSudoku(grid):
 	grid = deepcopyGrid(grid)
@@ -319,13 +329,14 @@ def generateSudoku(clues):
 
 
 
-#TRANSFORMTAION FUNCTIONS
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~	TRANSFORMTAION FUNCTIONS 	~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 #these functions perform matrix transformations on the sudoku grid, creating new grids without changing
 #the number of clues, solvability or number of solutions of the puzzle. 
 #especially in the case of difficult puzzles with few clues, generating related sudokus might be enormously faster than creating 
 #individual sudokus from scratch using generateSudoku()
 
-#as each of these functions can be applied in serial, a LOT of similar sudokus can be generated (4 * 9! * ...)
+#as each of these functions can be applied in serial, a LOT of similar sudokus can be generated (4 *6 * 6 * 9! * ... <2.6 trillion)
 
 #for details on the mathematics, see https://en.wikipedia.org/wiki/Mathematics_of_Sudoku#Enumerating_essentially_different_Sudoku_solutions
 
@@ -347,6 +358,7 @@ def matrixFlip(grid):
 
 #combine the two functions above into a function that returns a full list of 0°, 90°, 180° and 270° rotated grids
 def allMatrixRotations(grid):
+	grid=deepcopyGrid(grid)
 	#add the grid itself to the list of rotations (0°)
 	returnList=[grid]	
 	for i in range(3):	
@@ -391,9 +403,78 @@ def allMatrixSymbolPermutations(grid,maxUnchangedNumbers=9):
 
 
 
+#utility function for row and band manipulation.
+#it returns a grid that had its rows moved according to the tuple passed in (eg. (1,0,3,4,5,6,7,8) swaps the first and second row)
+def transformMatrixRows(grid,destinationTuple):
+	#initialize the grid storing the result
+	result=deepcopyGrid(emptyGrid)	
+	for i in range(9):
+		result[destinationTuple[i]]=grid[i]
+	return result
 
 
-#IO FUNCTIONS
+
+#return a list of all band-permutations of the grid. 
+#the order of bands (3 rows) can changed freely, resulting in similar sudokus
+def allMatrixBandPermutations(grid):
+	returnList=[grid]
+	destinationTuples = [(0,1,2,6,7,8,3,4,5),(3,4,5,0,1,2,6,7,8),(3,4,5,6,7,8,0,1,2),(6,7,8,0,1,2,3,4,5),(6,7,8,3,4,5,0,1,2)]
+	for x in destinationTuples:
+		returnList.append(transformMatrixRows(grid,x))
+	return returnList
+
+#return a list of all stack-permutations of the grid.
+#just like bands, stacks (3 columns) may be switched freely.
+def allMatrixStackPermutations(grid):
+	grid=deepcopyGrid(grid)
+	returnList=[]
+
+	#the grid is rotated by 90° - rows become columns and vice versa. 
+	grid=matrixRotate(grid)
+	#then, the same algorithm used for band-permutation may be applied
+	results=allMatrixBandPermutations(grid)
+	#afterwards, the grids need to each be rotated back.
+	for x in results:
+		returnList.append(matrixRotate(matrixRotate(matrixRotate(x))))
+
+	return returnList
+
+
+
+#return a list of all row-permutations within bands of the grid.
+#within a band, the order of the inidivdual rows may be chenged freely, producing similar sudokus
+#this results in 3! configurations for each of the three bands, so 3!^3=216 possible similar configurations in total
+def allMatrixRowPermutations(grid):
+	returnList=[]
+	#find all permutations of the row-indices of each band
+	band_a=list(itertools.permutations([0,1,2]))
+	band_b=list(itertools.permutations([3,4,5]))
+	band_c=list(itertools.permutations([6,7,8]))
+	for firstband in band_a:
+		for secondband in band_b:
+			for thirdband in band_c:
+				#join the three permutations of bands together, then build the according grid and add it to the list of results
+				returnList.append(transformMatrixRows(grid,firstband+secondband+thirdband))
+	#return the results
+	return returnList
+
+#just like the row permutations above, columns within a stack may be switched freely. 
+#we just need to rotate the grid by 90°, apply the above function, and turn each result back to get the same effect for columns
+def allMatrixColumnPermutations(grid):
+	returnList=[]
+	#first, rotate the grid
+	grid = matrixRotate(grid)
+	#then, apply the same algorithm as to rows, seen above
+	x = allMatrixRowPermutations(grid)
+	for permutation in x:
+		#rotate each permutation back and add it to the list of solutions
+		returnList.append(matrixRotate(matrixRotate(matrixRotate(permutation))))
+	return returnList
+
+
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~	IO FUNCTIONS 	~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #write a list of strings into the file sudokumemory.txt
 #the return value indicates the success of the operation (false = error, true = written)
 def writeToFile(listOfStrings):
@@ -496,7 +577,9 @@ def stringToGrid(string):
 
 
 
-#CALL FUNCTIONS HERE
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~	CALL FUNCTIONS HERE		~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#instead of deleting testing procedures, they are commented out, providing hints as to how to use the functions
+
 #printGrid(fillSudoku(emptyGrid))
 #print()
 #printGrid(solveSudoku(testSudoku))
@@ -507,26 +590,35 @@ def stringToGrid(string):
 #print(testUniquity(manySolutionTestSudoku))
 #print()
 #printGrid(generateSudoku(30))
-
+#
 #writeToFile(["12","34","abcdefghijklmnop5678"])
 #x=readFromFile(0,0)
 #for i in x:
 #	print(i)
-
+#
 #printGrid(testSudoku)
 #s=sudokuToString(testSudoku,solveSudoku(testSudoku))
 #print(s)
 #printGrid(stringToGrid(s))
-
+#
 #for x in allMatrixRotations(matrixTestGrid):
 #	printGrid(x)
 #	print()
-
+#
 #x=allMatrixSymbolPermutations(testSudoku,0)
 #print("done")
 #strlist=[]
 #for entry in x:
 #	strlist.append(sudokuToString(entry))
 #writeToFile(strlist)
+#
+#x=allMatrixRowPermutations(matrixTestGrid)
+#x=allMatrixColumnPermutations(matrixTestGrid)
+#for i in x:
+#	printGrid(i)
+#	print()
+#
+#X = list(map(matrixRotate,allMatrixSymbolPermutations(testSudoku,0)))
+#print(len(X))
 
 
