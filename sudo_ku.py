@@ -50,6 +50,51 @@ symbols = [1,2,3,4,5,6,7,8,9]
 #this table shows the difference in index of a field to fields of the same 3x3 section depending on the row/col index modulo 3
 sectionIndexes = [[0,1,2],[-1,0,1],[-2,-1,0]]
 
+#number of sudokus per page when using html output
+sudokusPerPage = 4
+
+#first part of the html document created by outputHtml(). css formatting can be changed here
+htmlHead = """
+<html>
+<head>
+    <style>
+td {
+    font-size: 15px;
+    font-family: Sans-Serif;
+    text-align: center;
+    vertical-align: middle;
+}
+table{
+    margin: 50px;
+    float: left;
+    width: 220;
+    height: 220;
+}
+table, td {
+    border: 1px solid black;
+    border-collapse: collapse;
+}
+td {
+    height: 15px;
+    width: 15px;
+}
+.band{
+    border-bottom: 2px solid black;
+}
+.stack{
+    border-right: 2px solid black
+}
+@media print {
+    .pagebreak {
+        clear: both;
+        page-break-after: always;
+    }
+}
+</style>
+</head>
+<body>
+"""
+
 
 
 
@@ -59,6 +104,7 @@ sectionIndexes = [[0,1,2],[-1,0,1],[-2,-1,0]]
 def printGrid(grid):
 	for row in grid:
 		print(row)
+	print()
 
 #return a deepcopy of the grid that was passed in
 def deepcopyGrid(grid):
@@ -188,6 +234,14 @@ def solveSudoku(grid):
 	solution = emptyGrid
 	return x
 
+#wrapper function to solve more than one sudoku
+def solveSudokus(grids):
+	gridList=[]
+	for grid in grids:
+		gridList.append(solveSudoku(grid))
+	return gridList
+
+
 
 
 #THIS FUNCTION SEEMS NOT TO BE WORKING PROPERLY (but remains in the codebase until i figure out why).
@@ -297,8 +351,9 @@ def testUniquity(grid):
 
 
 #this function is not guaranteed to return a sudoku with the specified amount of clues if doing so
-#would result in a non-unique puzzle.
-def generateSudoku(clues):
+#would result in a non-unique puzzle. 
+#by default, create a sudoku with as little clues as possible. providing more clues reduces runtime
+def generateSudoku(clues=0):
 	#first, generate a full sudoku grid
 	grid = fillSudoku(emptyGrid)
 	#from the filled out grid we want to erase numbers at random positions, unless it results in a non-unique or unsolvable puzzle
@@ -311,6 +366,8 @@ def generateSudoku(clues):
 	 [4, 8], [5, 0], [5, 1], [5, 2], [5, 3], [5, 4],[5, 5], [5, 6], [5, 7], [5, 8], [6, 0], [6, 1], [6, 2], [6, 3], [6, 4], 
 	 [6, 5], [6, 6], [6, 7], [6, 8],[7, 0], [7, 1], [7, 2], [7, 3], [7, 4], [7, 5], [7, 6], [7, 7], [7, 8], [8, 0], [8, 1], 
 	 [8, 2], [8, 3],[8, 4], [8, 5], [8, 6], [8, 7], [8, 8]]
+
+	 #shuffle the order of the coordinates of numbers to be removed to create a random sudoku
 	random.shuffle(coords)
 	#while there are more clues than specified AND not all positions have already been tried,
 	#try to remove a clue at the next position in coords
@@ -325,6 +382,15 @@ def generateSudoku(clues):
 		#regardless of if the value was removed successfully or unsuccessfully, remove the current coordinate from coords
 		coords.pop(0)
 	return grid
+
+
+#instead of generating one sudoku, generate a number of them
+def generateSudokus(amount, clues=0):
+	gridList=[]
+	for x in range(amount):
+		gridList.append(generateSudoku(clues))
+	return gridList
+
 
 
 
@@ -577,6 +643,63 @@ def stringToGrid(string):
 
 
 
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~	HTML OUTPUT 	~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+#with this function you can create printable html files containing sudokus
+#	CAUTION! this overwrites the existing out.html in the working directory
+def outputHtml(grids):
+	try:
+		file = open("out.html",'w')
+		#write the first section of the html file inculding head, style elements and body tag
+		#css formatting can be changed in the global htmlHead variable
+		file.write(htmlHead)
+		index=0	#keep track of the number of sudokus output
+		#then write each sudoku grid as a table
+		for grid in grids:
+			#start the table
+			file.write("""<table>""")
+			for row in range(9):
+				#start the row. 3rd and 6th row get the class "band" so that a css border between bands can be set
+				if row == 2 or row == 5:
+					file.write("""<tr class="band">""")
+				else:
+					file.write("""<tr>""")
+
+
+				for col in range(9):
+					#each 3rd and 6th column get the class "stack" so that a css border in between stacks can be set.
+					#td = table data, contains the value of the grid at that position. if the value is zero, insert a space instead.
+					if col == 2 or col == 5:
+						file.write("""<td class="stack">""" + str(grid[row][col]).replace("0"," ") + """</td>""")
+					else:
+						file.write("""<td>""" + str(grid[row][col]).replace("0"," ") + """</td>""")
+
+
+				#end the row
+				file.write("""</tr>""")
+			#end the table
+			file.write("""</table>""")
+
+			#after every 4th sudoku, insert a page break as defined in the htmlHead css
+			index +=1
+			if index%sudokusPerPage==0:
+				file.write("""<div class="pagebreak"> </div>""")
+			
+
+
+
+
+	except Exception as e:
+		return False
+	else:
+		return True
+	finally:
+		#flush the memory, close the file
+		file.close()
+
+
+
+
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~	CALL FUNCTIONS HERE		~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #instead of deleting testing procedures, they are commented out, providing hints as to how to use the functions
 
@@ -620,5 +743,7 @@ def stringToGrid(string):
 #
 #X = list(map(matrixRotate,allMatrixSymbolPermutations(testSudoku,0)))
 #print(len(X))
-
-
+#printGrid(generateSudoku())
+#
+sudokus=generateSudokus(10,35)
+outputHtml(sudokus+solveSudokus(sudokus))
