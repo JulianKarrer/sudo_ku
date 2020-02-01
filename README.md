@@ -8,8 +8,8 @@ UNIX pun is intended.
 * Solve any sudoku
 * Generate sudokus
 * Display sudokus in HTML format for printing
-* Count the number of solutions of a sudoku
-* Check if a sudoku has a unique solution
+* Check if a sudoku has a unique solution or multitudes
+* Check if it can be solved without guessing
 * Permutate and transform sudokus to quickly find (up to 2.4 trillion) similar ones
 * Store, access and retrive sudokus from a .txt file
 
@@ -23,7 +23,7 @@ Where the code is not self-explanatory, comments are provided.
 sudo_ku.py has no dependencies.  
 
 
-### Examples:
+### Examples
 Generate and display a sudoku with 30 clues in the console:
 ```
 printGrid(generateSudoku(30))
@@ -34,7 +34,12 @@ Solve and display a sudoku using a brute force depth-first backtracking approach
 printGrid(solveSudoku(testSudoku))
 ```
 
-Generate five sudokus with 35 clues each and their solutions and output them in hthml for printing:
+Check if a sudoku can be solved without guessing or advanced strategy:
+```
+print(sudokuIsEasy(testSudoku))
+```
+
+Generate five sudokus with 35 clues each and their solutions and output them in HTML for printing:
 ```
 sudokus=generateSudokus(5,35)
 outputHtml(sudokus + solveSudokus(sudokus))

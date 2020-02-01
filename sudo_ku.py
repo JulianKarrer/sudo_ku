@@ -280,6 +280,43 @@ def XsolveSudoku(grid):
 
 
 
+#to differentiate sudoku difficulty, they are tested against algotithms of increasing sophistication.
+#this most simple solver classifies sudokus as "easy". 
+#its runtime is more consistent and faster than solveSudoku but it should only be used to classify, not solve sudokus, 
+#	as it is not guaranteed to work
+#it finds a solution only if there is always at least one field with only one possible number to be inserted, only considering the 
+#basic rules with no added strategy
+def sudokuIsEasy(grid):
+	grid = deepcopyGrid(grid)
+	#iterate through every field on the grid looking for empty ones.
+	for row, col in itertools.product(range(9), range(9)):
+		if grid[row][col]==0:
+			possibleNumbers=[]
+			#try every possible number to insert. if insertion is allowed, add the number to the possibleNumber list
+			for i in range(1,10):
+				if checkBeforeInsert(grid, row, col, i):
+					possibleNumbers.append(i)
+			#now there are two cases: either there is only one number in possibleNumbers and it may be inserted with certainty,
+			#or this field is still ambiguous.
+			if len(possibleNumbers)==1:
+				#if the number is certain, insert it. 
+				grid[row][col]=possibleNumbers[0]
+				#then call the function with the new grid causing the algorithm to iterate over every field starting
+				#from the first one again to reconsider new options for insertion. 
+				#this works recursively until all fields are considered without any insertions
+				return sudokuIsEasy(grid)
+			#if the field is still ambiguous, do nothing for now.
+
+	#code execution only reaches this point when all fields have been considered but no new insertion was made.
+	#so either the sudoku is solved, or unsolvable by this method
+	if checkForZeros(grid):
+		return False
+	else:
+		return True
+
+
+
+
 #return the number of solutions of a sudoku puzzle.
 #passing this function an empty grid or a sudoku with insuffiecient clues will cause runtime issues
 def countSolutions(grid):
@@ -745,5 +782,13 @@ def outputHtml(grids):
 #print(len(X))
 #printGrid(generateSudoku())
 #
-sudokus=generateSudokus(10,35)
-outputHtml(sudokus+solveSudokus(sudokus))
+#sudokus=generateSudokus(10,35)
+#outputHtml(sudokus+solveSudokus(sudokus))
+#
+#s = generateSudoku()
+#printGrid(s)
+#while not sudokuIsEasy(s):
+#	s = generateSudoku()
+#	printGrid(s)
+#print("done")
+#outputHtml([s, solveSudoku(s)])
