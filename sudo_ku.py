@@ -166,6 +166,44 @@ def swapRows(grid,row1,row2):
 	grid[row2]=bufferRow
 	return True
 
+#return a grid of lists containg the possible numbers that may be inserted at each position
+def getPossibleNumbers(grid):
+	#initialize a list of lists of lists (9x9x1)
+	possibleNumbers=[
+	[[],[],[],[],[],[],[],[],[]],
+	[[],[],[],[],[],[],[],[],[]],
+	[[],[],[],[],[],[],[],[],[]],
+	[[],[],[],[],[],[],[],[],[]],
+	[[],[],[],[],[],[],[],[],[]],
+	[[],[],[],[],[],[],[],[],[]],
+	[[],[],[],[],[],[],[],[],[]],
+	[[],[],[],[],[],[],[],[],[]],
+	[[],[],[],[],[],[],[],[],[]]] 
+	#iterate over every empty field
+	for row,col in itertools.product(range(9),range(9)):
+		if grid[row][col]==0:
+			valueList=[]
+			#for an empy field, check if each value can be legally inserted and if so add it to the list of possible values for that field 
+			for x in range(1,10):
+				if checkBeforeInsert(grid,row,col,x):
+					valueList.append(x)
+			possibleNumbers[row][col]=valueList
+	#return the grid of lists of possible values
+	return possibleNumbers
+
+#return a list of the field values of the entire square the given field is in
+#TODO update checkBeforeInsert with this function
+def getSquare(grid,row,col):
+	returnList=[]
+	rowDif = sectionIndexes[row%3]
+	colDif = sectionIndexes[col%3]
+	for dy in rowDif:
+		for dx in colDif:
+			returnList.append(grid[row+dy][col+dx])
+	return returnList
+
+
+
 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~	MAIN FUNCTIONS 	~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -277,42 +315,6 @@ def XsolveSudoku(grid):
 					#if not, continue in the for loop of possibleNumbers to traverse the search tree sideways
 					if not checkForZeros(g):
 						return g
-
-
-
-#to differentiate sudoku difficulty, they are tested against algotithms of increasing sophistication.
-#this most simple solver classifies sudokus as "easy". 
-#its runtime is more consistent and faster than solveSudoku but it should only be used to classify, not solve sudokus, 
-#	as it is not guaranteed to work
-#it finds a solution only if there is always at least one field with only one possible number to be inserted, only considering the 
-#basic rules with no added strategy
-def sudokuIsEasy(grid):
-	grid = deepcopyGrid(grid)
-	#iterate through every field on the grid looking for empty ones.
-	for row, col in itertools.product(range(9), range(9)):
-		if grid[row][col]==0:
-			possibleNumbers=[]
-			#try every possible number to insert. if insertion is allowed, add the number to the possibleNumber list
-			for i in range(1,10):
-				if checkBeforeInsert(grid, row, col, i):
-					possibleNumbers.append(i)
-			#now there are two cases: either there is only one number in possibleNumbers and it may be inserted with certainty,
-			#or this field is still ambiguous.
-			if len(possibleNumbers)==1:
-				#if the number is certain, insert it. 
-				grid[row][col]=possibleNumbers[0]
-				#then call the function with the new grid causing the algorithm to iterate over every field starting
-				#from the first one again to reconsider new options for insertion. 
-				#this works recursively until all fields are considered without any insertions
-				return sudokuIsEasy(grid)
-			#if the field is still ambiguous, do nothing for now.
-
-	#code execution only reaches this point when all fields have been considered but no new insertion was made.
-	#so either the sudoku is solved, or unsolvable by this method
-	if checkForZeros(grid):
-		return False
-	else:
-		return True
 
 
 
@@ -428,6 +430,93 @@ def generateSudokus(amount, clues=0):
 		gridList.append(generateSudoku(clues))
 	return gridList
 
+
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~	DIFFICULTY RATING 	~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#to differentiate sudoku difficulty, they are tested against algotithms of increasing sophistication.
+
+#the solvers' runtime is more consistent and faster than solveSudoku but they should only be used to classify, not solve sudokus, 
+#	as they are not guaranteed to work
+
+
+
+#SINGLE CANDIDATE TECHNIQUE
+#this solver finds a solution only if there is always at least one field with only one possible number to be inserted, only considering the 
+#basic rules with no added strategy 
+def levelOne(grid):
+	grid = deepcopyGrid(grid)
+	#iterate through every field on the grid looking for empty ones.
+	for row, col in itertools.product(range(9), range(9)):
+		if grid[row][col]==0:
+			possibleNumbers=[]
+			#try every possible number to insert. if insertion is allowed, add the number to the possibleNumber list
+			for i in range(1,10):
+				if checkBeforeInsert(grid, row, col, i):
+					possibleNumbers.append(i)
+			#now there are two cases: either there is only one number in possibleNumbers and it may be inserted with certainty,
+			#or this field is still ambiguous.
+			if len(possibleNumbers)==1:
+				#if the number is certain, insert it. 
+				grid[row][col]=possibleNumbers[0]
+				#then call the function with the new grid causing the algorithm to iterate over every field starting
+				#from the first one again to reconsider new options for insertion. 
+				#this works recursively until all fields are considered without any insertions
+				return levelOne(grid)
+			#if the field is still ambiguous, do nothing for now.
+
+	#code execution only reaches this point when all fields have been considered but no new insertion was made.
+	#so either the sudoku is solved, or unsolvable by this method
+	if checkForZeros(grid):
+		return False
+	else:
+		return True
+
+# + SINGLE POSITION TECHNIQUE
+#this variant uses the above technique but additionally checks all rows, columns and squares if there are any positions which
+#are the only possible positions for a number, even if that position might also be a possible position of another number.
+def levelTwo(grid):
+	grid = deepcopyGrid(grid)
+
+	possibleNumbers=getPossibleNumbers(grid)
+
+	for row in range(9):
+		#join the lists of possible numbers in the row together into one list
+		possibleNumbersInRow=list(itertools.chain.from_iterable(possibleNumbers[row]))
+
+		for col in range(9):
+			if grid[row][col]==0:
+	
+				#check for single candidates
+				if len(possibleNumbers[row][col])==1:
+					grid[row][col]=possibleNumbers[row][col][0]
+					return levelTwo(grid)
+
+				possibleNumbersInCol = list(itertools.chain.from_iterable(getColumn(possibleNumbers,col)))
+				possibleNumbersInSquare = list(itertools.chain.from_iterable(getSquare(possibleNumbers,row,col)))
+
+				for x in range(1,10):
+					#check each value for a single position in the row
+						#this means a value doesn't already appear in the row, appears exactly once in the rows possible numbers and is
+						#a possible number for the current field
+					if possibleNumbersInRow.count(x)==1 and grid[row].count(x)==0 and (x in possibleNumbers[row][col]):
+						grid[row][col]=x
+						return levelTwo(grid)
+
+					#check each value for a single position in the column
+					if  possibleNumbersInCol.count(x)==1 and getColumn(grid,col).count(x)==0 and (x in possibleNumbers[row][col]):
+						grid[row][col]=x
+						return levelTwo(grid)
+
+					#check each value for a single position in the square
+					if possibleNumbersInSquare.count(x)==1 and getSquare(grid,row,col).count(x)==0 and (x in possibleNumbers[row][col]):
+						grid[row][col]=x
+						return levelTwo(grid)
+
+	if checkForZeros(grid):
+		return False
+	else:
+		return True	
 
 
 
@@ -787,8 +876,19 @@ def outputHtml(grids):
 #
 #s = generateSudoku()
 #printGrid(s)
-#while not sudokuIsEasy(s):
+#while not levelOne(s):
 #	s = generateSudoku()
 #	printGrid(s)
 #print("done")
 #outputHtml([s, solveSudoku(s)])
+#
+#s = generateSudoku(25)
+#while not (not levelOne(s) and levelTwo(s)):
+#	printGrid(s)
+#	s = generateSudoku(25)
+#printGrid(s)
+#print(levelOne(s))
+#print(levelTwo(s))
+
+
+
