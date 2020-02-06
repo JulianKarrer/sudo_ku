@@ -486,12 +486,14 @@ def levelTwo(grid):
 
 		for col in range(9):
 			if grid[row][col]==0:
-	
+				
+				#LEVEL ONE
 				#check for single candidates
 				if len(possibleNumbers[row][col])==1:
 					grid[row][col]=possibleNumbers[row][col][0]
 					return levelTwo(grid)
 
+				#LEVEL TWO
 				possibleNumbersInCol = list(itertools.chain.from_iterable(getColumn(possibleNumbers,col)))
 				possibleNumbersInSquare = list(itertools.chain.from_iterable(getSquare(possibleNumbers,row,col)))
 
@@ -518,6 +520,113 @@ def levelTwo(grid):
 	else:
 		return True	
 
+# + CANDIDATE LINES TECHNIQUE
+#this variant uses the above technique but additionally checks if in any square the only possible positions for any number are in a line.
+#if so, this number can be removed from all possibleNumber fields in that line outside of the square.
+def levelThree(grid):
+	grid = deepcopyGrid(grid)
+
+	possibleNumbers=getPossibleNumbers(grid)
+
+	for row in range(9):
+		#join the lists of possible numbers in the row together into one list
+		possibleNumbersInRow=list(itertools.chain.from_iterable(possibleNumbers[row]))
+
+		for col in range(9):
+			if grid[row][col]==0:
+
+				#LEVEL ONE
+				#check for single candidates
+				if len(possibleNumbers[row][col])==1:
+					grid[row][col]=possibleNumbers[row][col][0]
+					return levelThree(grid)
+
+				#LEVEL TWO
+				possibleNumbersInCol = list(itertools.chain.from_iterable(getColumn(possibleNumbers,col)))
+				possibleNumbersInSquare = list(itertools.chain.from_iterable(getSquare(possibleNumbers,row,col)))
+				possibleNumbersListsInSquare = getSquare(possibleNumbers,row,col)
+
+				for x in range(1,10):
+					#LEVEL THREE
+					#this needs to be executed before all levels which rely on possibleNumbers becuase it modifies it. 
+					#this change would be overwritten in the next layer of recursion
+
+					#only execute this for the first field of each square
+					if row%3==0 and col%3==0:
+						if 1<possibleNumbersInSquare.count(x)<=3:
+							#determine the relative coordinates ((0,0)-(3,3)) in the square of the fields that have x as a possible number.
+							coords = []
+							#the getSquare function returns fields of a square in order from top left to bottom right, row-wise.
+							#so determining the indices in the returned array allows us to find its relative coordinate in the square
+							for index in range(9):
+								if possibleNumbersListsInSquare[index].count(x)==1:
+									#we use floor division to find the row, modulo to find the column
+									coords.append(tuple((index//3,index%3)))
+	
+							#determine if the fields with x as a possible value lie on a line
+							if len(coords)==2:
+								if coords[0][0]==coords[1][0]:	#the row component of the coords is the same
+								#iterate over all fields in this row of the possibleNumbers matrix.
+									for i in range(9): 
+										#if a field in this row does not belong to the current square, remove x from its possible numbers
+										if i<col or i>col+2:
+											#catch ValueError when trying to remove x from a list where it doesn't exist
+											try:
+												possibleNumbers[row+coords[0][0]][i].remove(x)
+											except ValueError:
+												pass
+
+								if coords[0][1]==coords[1][1]:	#the col component of the coords is the same
+								#iterate over all fields in this column of the possibleNumbers matrix.
+									for i in range(9): 
+										#if a field in this column does not belong to the current square, remove x from its possible numbers
+										if i<row or i>row+2:
+											try:
+												possibleNumbers[i][col+coords[0][1]].remove(x)
+											except ValueError:
+												pass
+							else:
+								#now do the same as explained above, but check for 3 fields in a row.
+								#this is to avoid an index out of bounds exception if comparing 
+								#three coords when the array only contains two
+								if coords[0][0]==coords[1][0]==coords[2][0]:	
+									for i in range(9): 
+										if i<col or i>col+2:
+											try:
+												possibleNumbers[row+coords[0][0]][i].remove(x)
+											except ValueError:
+												pass
+
+								if coords[0][1]==coords[1][1]==coords[2][1]:	
+									for i in range(9): 
+										if i<row or i>row+2:
+											try:
+												possibleNumbers[i][col+coords[0][1]].remove(x)
+											except ValueError:
+												pass
+
+					#LEVEL TWO CONTINUATION
+					#check each value for a single position in the row
+						#this means a value doesn't already appear in the row, appears exactly once in the rows possible numbers and is
+						#a possible number for the current field
+					if possibleNumbersInRow.count(x)==1 and grid[row].count(x)==0 and (x in possibleNumbers[row][col]):
+						grid[row][col]=x
+						return levelThree(grid)
+
+					#check each value for a single position in the column
+					if  possibleNumbersInCol.count(x)==1 and getColumn(grid,col).count(x)==0 and (x in possibleNumbers[row][col]):
+						grid[row][col]=x
+						return levelThree(grid)
+
+					#check each value for a single position in the square
+					if possibleNumbersInSquare.count(x)==1 and getSquare(grid,row,col).count(x)==0 and (x in possibleNumbers[row][col]):
+						grid[row][col]=x
+						return levelThree(grid)
+
+	if checkForZeros(grid):
+		return False
+	else:
+		return True	
 
 
 
@@ -567,10 +676,21 @@ def allMatrixRotations(grid):
 #you can set the maximum number of unchanged numbers compared to the original puzzle to avoid very similar solutions
 #the solutions may still, however, be very similar to each other
 #	WARNING even maxUnchangedNumbers=0 results in ~20MB worth of sudokus
-def allMatrixSymbolPermutations(grid,maxUnchangedNumbers=9):
+def allMatrixSymbolPermutations(grid,maxUnchangedNumbers=0,limit=-1):
 	returnList=[]
 	#find all possible permutations of the numbers 1 to 9 using itertools.
 	allPermutations=itertools.permutations(symbols)
+	#in case a limit to the number of grids returned was specified,chose that number of permutations at random, discard the rest
+	if limit>=0:
+		if limit >=362880:
+			limit = 362879
+		allPermutations=list(allPermutations)
+		random.shuffle(allPermutations)
+		selectPermutations=[]
+		for i in range(limit):
+			selectPermutations.append(allPermutations[i])
+		allPermutations=selectPermutations
+
 	#each entry in that list (9!=362 880 elements) acts like a lookup table:
 	#	each number in the grid represents the index of the number to be translated to in that lookup table.
 	for table in allPermutations:
@@ -663,7 +783,53 @@ def allMatrixColumnPermutations(grid):
 		returnList.append(matrixRotate(matrixRotate(matrixRotate(permutation))))
 	return returnList
 
+#standart wrapper function to get a specified number of random variations on a puzzle
+#(on a 2.5GHz machine number=100 might take ~3 seconds, number=500 can take ~15sec, number=1000 ~ 30sec)
+#especially for puzzles with a low number of clues this can still be tremendously faster than computing new puzzles by random
+def getRandomVariations(grid,number=100):
+	if number >=362880:
+			number = 362879
+	#each permutation is executed sequentially, each time shuffling the resulting list and choosing the specified number
+	#of items from it. 
+	#start by performing a symbol permutation
+	perm=allMatrixSymbolPermutations(grid,0,number)
 
+	#then rotation
+	rot=[]
+	for x in perm:
+		rot+=allMatrixRotations(x)
+	random.shuffle(rot)
+	rot=rot[:number]
+
+	#stack permutation
+	stack=[]
+	for x in rot:
+		stack+=allMatrixStackPermutations(x)
+	random.shuffle(stack)
+	stack=stack[:number]
+
+	#band permutation
+	band=[]
+	for x in stack:
+		band += allMatrixBandPermutations(x)
+	random.shuffle(band)
+	band=band[:number]
+
+	#row permutation
+	row=[]
+	for x in band:
+		row += allMatrixRowPermutations(x)
+	random.shuffle(row)
+	row=row[:number]
+
+	#column permutation
+	col=[]
+	for x in row:
+		col += allMatrixColumnPermutations(x)
+	random.shuffle(col)
+	col=col[:number]
+
+	return col
 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~	IO FUNCTIONS 	~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -889,6 +1055,24 @@ def outputHtml(grids):
 #printGrid(s)
 #print(levelOne(s))
 #print(levelTwo(s))
+#
+#i=0
+#while True:
+#	s = generateSudoku(30)
+#	printGrid(s)
+#	a=levelOne(s)
+#	b=levelTwo(s)
+#	c=levelThree(s)
+#	print(a)
+#	print(b)
+#	print(c)
+#	if (not c and (a or b)) or (not b and a):
+#		break
+#	if (not b) and c:
+#		break
+#	i+=1
+#print("CASE FOUND")
+#print(i)
 
 
 

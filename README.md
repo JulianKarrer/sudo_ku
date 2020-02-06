@@ -8,6 +8,7 @@ UNIX pun is intended.
 * Solve any sudoku
 * Generate sudokus
 * Display sudokus in HTML format for printing
+* Check sudoku difficulty / technique required
 * Check if a sudoku has a unique solution or multitudes
 * Check if it can be solved without guessing
 * Permutate and transform sudokus to quickly find (up to 2.4 trillion) similar ones
